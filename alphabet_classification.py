@@ -15,7 +15,7 @@ try:
         valid_labels = save['valid_labels']
         test_dataset = save['test_dataset']
         test_labels = save['test_labels']
-        del save  # hint to help gc free up memory
+        del save
         print('Training set', train_dataset.shape, train_labels.shape)
         print('Validation set', valid_dataset.shape, valid_labels.shape)
         print('Test set', test_dataset.shape, test_labels.shape)
@@ -54,10 +54,7 @@ with graph.as_default():
     tf_valid_dataset = tf.constant(valid_dataset)
     tf_test_dataset = tf.constant(test_dataset)
 
-    # Variables.
-    # These are the parameters that we are going to be training. The weight
-    # matrix will be initialized using random values following a (truncated)
-    # normal distribution. The biases get initialized to zero.
+
     weights = {
         'l1': tf.Variable(tf.truncated_normal([image_size * image_size, 1024], stddev=0.1)),
         'l2': tf.Variable(tf.truncated_normal([1024, 600], stddev=0.1)),
@@ -74,10 +71,6 @@ with graph.as_default():
         # 'out': tf.Variable(tf.constant(0.1, shape=[10]))
     }
     # Training computation.
-    # We multiply the inputs with the weight matrix, and add biases. We compute
-    # the softmax and cross-entropy (it's one operation in TensorFlow, because
-    # it's very common, and it can be optimized). We take the average of this
-    # cross-entropy across all training examples: that's our loss.
 
     def multilayered_network(x, weights, biases):
 
@@ -91,9 +84,6 @@ with graph.as_default():
 
         return logits
 
-    # Predictions for the training, validation, and test data.
-    # These are not part of training, but merely here so that we can report
-    # accuracy figures as we train.
     train_prediction = tf.nn.softmax(multilayered_network(tf_train_dataset, weights, biases))
 
     beta = 0.001
@@ -105,8 +95,7 @@ with graph.as_default():
             beta*tf.nn.l2_loss(weights['out']) +
             beta*tf.nn.l2_loss(weights['out']))
 
-    # Optimizer.
-    # We are going to find the minimum of this loss using gradient descent.
+
     global_step = tf.Variable(0)  # count the number of steps taken.
     learning_rate = tf.train.exponential_decay(0.5, global_step, 500, 0.96)
     optimizer = tf.train.GradientDescentOptimizer(learning_rate).minimize(loss,global_step=global_step)
@@ -121,21 +110,15 @@ def accuracy(predictions, labels):
     return (100.0 * np.sum(np.argmax(predictions, 1) == np.argmax(labels, 1))/ predictions.shape[0])
 
 with tf.Session(graph=graph) as session:
-    # This is a one-time operation which ensures the parameters get initialized as
-    # we described in the graph: random weights for the matrix, zeros for the
-    # biases.
+
     tf.initialize_all_variables().run()
     print('Initialized')
     for step in range(num_steps):
-        # Run the computations. We tell .run() that we want to run the optimizer,
-        # and get the loss value and the training predictions returned as numpy
-        # arrays.
+
         offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
         batch_data = train_dataset[offset:(offset + batch_size), :]
         batch_labels = train_labels[offset:(offset + batch_size), :]
-        # Prepare a dictionary telling the session where to feed the minibatch.
-        # The key of the dictionary is the placeholder node of the graph to be fed,
-        # and the value is the numpy array to feed to it.
+        
         feed_dict = {tf_train_dataset : batch_data, tf_train_labels : batch_labels}
         _, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
         if (step % 100 == 0):
